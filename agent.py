@@ -2,9 +2,10 @@ import os
 from openai import AzureOpenAI
 from cosmosdb import create_cosmos_client, load_documents, chunk_document, chunk_full_document, chunk_by_paragraph
 import time
-from functions import pdf_to_json
+from functions import pdf_to_json, docx_to_json, txt_to_json
 import json
 from azure.cosmos import exceptions
+
 
 cosmos_client = create_cosmos_client()
 
@@ -173,12 +174,45 @@ while True:
     elif user_input == "":
         
         ### Tästä aloitetaan huomenna ###
-        
+        filename = r"C:\temp python\sample.txt"
+
         ### Tunnista file formatti ja kutsu oikea funktio sen mukaan ###
-        
+        # Muunna tiedostotyypin mukaan
+        file_type = filename.split('.')[-1].lower()
+        print(f"File type: {file_type}")
+
+        if file_type == "pdf":
+            json_data = pdf_to_json(filename)
+            print(f"✅ Converted {filename} (PDF)")
+        elif file_type == "docx":
+            json_data = docx_to_json(filename)
+            print(f"✅ Converted {filename} (DOCX)")
+        elif file_type == "txt":
+            json_data = txt_to_json(filename)
+            print(f"✅ Converted {filename} (TXT)")
+        elif file_type == "json":
+            with open(filename, 'r', encoding='utf-8') as f:
+                json_data = json.load(f)
+            print(f"✅ Loaded {filename} (JSON)")
+        else:
+            print(f"\n❌ Couldn't determine file type!")
+            print(f"Supported formats: PDF, DOCX, TXT, JSON")
+            print(f"Your file: {filename}\n")
+            continue
+
+        # Seivataan input_doc.jsoniksi
+        with open("input_doc.json", "w", encoding="utf-8") as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=2)
+        print(f"✅ Saved to input_doc.json")
+
+        # printataan JSON data
+        print("\n" + "="*50)
+        print(json.dumps(json_data, indent=2, ensure_ascii=False))
+        print("="*50)
+        print(f"\nJSON filename: {json_filename}")
+        print(f"Original file path: {filename}")
+
         ### Promptin kutsu kun uusi tiedosto laadattu ###
-        
-        pdf_to_json("nordsure_security_breach_layoff_notice.pdf", "input_doc.json")
         
         input_doc = "input_doc.json"
         
