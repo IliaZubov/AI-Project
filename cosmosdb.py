@@ -35,11 +35,11 @@ if __name__ in "__main__":
     
     cosmos_client = create_cosmos_client()
     
-try:
-    databases = list(cosmos_client.list_databases())
-    print("Databases:", [db['id'] for db in databases])
-except exceptions.CosmosHttpResponseError as e:
-    print(f"Could not list databases: {e}")
+    try:
+        databases = list(cosmos_client.list_databases())
+        print("Databases:", [db['id'] for db in databases])
+    except exceptions.CosmosHttpResponseError as e:
+        print(f"Could not list databases: {e}")
     
     documents = load_documents(doc_files)
     
@@ -52,9 +52,7 @@ except exceptions.CosmosHttpResponseError as e:
         api_version=api_version,
         azure_endpoint=azure_endpoint
     )
-    
-    documents = load_documents(doc_files)
-    
+        
     database_name = os.getenv("COSMOS_DATABASE")
     container_name = os.getenv("COSMOS_CONTAINER")
     
@@ -66,8 +64,8 @@ except exceptions.CosmosHttpResponseError as e:
         text_to_embed = f"{doc['title']}\n\n{doc['content']}"
         
         response = client.embeddings.create(
-        model="text-embedding-ada-002",
-        input=text_to_embed
+            model="text-embedding-ada-002",
+            input=text_to_embed
         )
         
         embedding_vector = response.data[0].embedding
@@ -76,15 +74,20 @@ except exceptions.CosmosHttpResponseError as e:
         
         item = {
             "id": doc["id"],
+            "company": doc["company"],
+            "documentType": doc["documentType"],
+            "version": doc["version"],
+            "status": doc["status"],
+            "effectiveDate": doc["effectiveDate"],
+            "lastUpdated": doc["lastUpdated"],
+            "changeLog": doc["changeLog"],
             "title": doc["title"],
             "content": doc["content"],
-            "category": doc["category"],
             "source": f"{doc['id']}: {doc['title']}",
+            "originalSource": doc["source"],
+            "tags": doc["tags"],
             "embedding": embedding_vector
         }
-        
-        print("Embedding length:", len(item["embedding"]))
-        print("Embedding type:", type(item["embedding"][0]))
         
         try:
             container.upsert_item(item)
