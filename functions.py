@@ -1,6 +1,7 @@
-from docx import Document
 import json
+import pdfplumber
 from pathlib import Path
+from docx import Document
 
 def docx_to_json(docx_path, json_path):
     doc = Document(docx_path)
@@ -17,5 +18,19 @@ def docx_to_json(docx_path, json_path):
             })
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-# usage
-docx_to_json("input.docx", "output.json")
+
+
+def pdf_to_json(pdf_path, json_path):
+    data = {
+        "file_name": Path(pdf_path).name,
+        "pages": []
+    }
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num, page in enumerate(pdf.pages, start=1):
+            text = page.extract_text() or ""
+            data["pages"].append({
+                "page": page_num,
+                "text": text.strip()
+            })
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)

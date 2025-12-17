@@ -1,0 +1,180 @@
+import streamlit as st
+import os
+import json
+import tempfile
+from pathlib import Path
+from dotenv import load_dotenv
+from openai import AzureOpenAI
+import pdfplumber
+from docx import Document
+
+# Ajaminen TL >cd "c:\Local Python projects\AI-Project" ; .\venv\Scripts\python.exe -m streamlit run app.py 
+# Lataa ympäristömuuttujat
+load_dotenv()
+
+# Alusta Azure OpenAI client
+@st.cache_resource
+def get_azure_client():
+    api_key = os.getenv("AZURE_API_KEY")
+    api_version = os.getenv("AZURE_API_VERSION")
+    azure_endpoint = os.getenv("AZURE_ENDPOINT")
+    
+    return AzureOpenAI(
+        api_key=api_key,
+        api_version=api_version,
+        azure_endpoint=azure_endpoint
+    )
+
+# Muunnos funktiot
+def docx_to_json_data(docx_path):
+    """Muunna DOCX JSON-tietorakenteeksi"""
+    doc = Document(docx_path)
+    data = {
+        "file_name": Path(docx_path).name,
+        "paragraphs": []
+    }
+    for i, para in enumerate(doc.paragraphs):
+        text = para.text.strip()
+        if text:
+            data["paragraphs"].append({
+                "index": i,
+                "text": text
+            })
+    return data
+
+def pdf_to_json_data(pdf_path):
+    """Muunna PDF JSON-tietorakenteeksi"""
+    data = {
+        "file_name": Path(pdf_path).name,
+        "pages": []
+    }
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num, page in enumerate(pdf.pages, start=1):
+            text = page.extract_text() or ""
+            data["pages"].append({
+                "page": page_num,
+                "text": text.strip()
+            })
+    return data
+
+# Sivun asetukset
+st.set_page_config(
+    page_title="Policy and Guideline Agent",
+    page_icon="📄",
+    layout="wide"
+)
+
+st.title("📄 Policy and Guideline Agent")
+
+# Luo kaksi saraketta pääasettelulle
+col1, col2 = st.columns([1, 1])
+
+# Vasen sarake - Tiedostomuunnin
+with col1:
+    st.header("🔄 Guideline and Compliance Checker")
+    st.write("Upload PDF or DOCX files to check compliance and get improvement suggestions.")
+    
+    uploaded_files = st.file_uploader(
+        "Drag and drop files here",
+        type=["pdf", "docx"],
+        accept_multiple_files=True
+    )
+    
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            file_type = uploaded_file.name.split('.')[-1].lower()
+            
+            # Luo väliaikainen tiedosto
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_type}") as tmp_file:
+                tmp_file.write(uploaded_file.getvalue())
+                tmp_path = tmp_file.name
+            
+            try:
+                # Muunna tiedostotyypin mukaan
+                if file_type == "pdf":
+                    json_data = pdf_to_json_data(tmp_path)
+                    st.success(f"✅ Converted {uploaded_file.name} (PDF)")
+                elif file_type == "docx":
+                    json_data = docx_to_json_data(tmp_path)
+                    st.success(f"✅ Converted {uploaded_file.name} (DOCX)")
+                
+                # Näytä JSON-esikatselu
+                with st.expander(f"Preview: {uploaded_file.name}"):
+                    st.json(json_data)
+                
+                # Lataa-painike
+                json_filename = uploaded_file.name.rsplit('.', 1)[0] + '.json'
+                st.download_button(
+                    label=f"💾 Download {json_filename}",
+                    data=json.dumps(json_data, ensure_ascii=False, indent=2),
+                    file_name=json_filename,
+                    mime="application/json"
+                )
+                
+            except Exception as e:
+                st.error(f"❌ Error converting {uploaded_file.name}: {str(e)}")
+            finally:
+                # Siivoa väliaikainen tiedosto
+                os.unlink(tmp_path)
+
+# Oikea sarake - Chat-käyttöliittymä
+with col2:
+    st.header("💬 Guideline Assistant")
+    st.write("Chat with Azure OpenAI")
+    
+    # Alusta chat-historia
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    
+    # Näytä chat-viestit
+    chat_container = st.container()
+    with chat_container:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+    
+    # Chat-syöte
+    if prompt := st.chat_input("Type your message here..."):
+        # Lisää käyttäjän viesti chat-historiaan
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # Näytä käyttäjän viesti
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # Hae AI-vastaus
+        try:
+            client = get_azure_client()
+            
+            # Valmistele viestit API:lle
+            api_messages = [{"role": m["role"], "content": m["content"]} 
+                          for m in st.session_state.messages]
+            
+            # Kutsu Azure OpenAI
+            response = client.chat.completions.create(
+                model="gpt-4o",  # Päivitä käyttöönottonimellä
+                messages=api_messages,
+                temperature=0.7,
+                max_tokens=800
+            )
+            
+            assistant_response = response.choices[0].message.content
+            
+            # Lisää avustajan vastaus chat-historiaan
+            st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+            
+            # Näytä avustajan vastaus
+            with st.chat_message("assistant"):
+                st.markdown(assistant_response)
+                
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+    
+    # Tyhjennä chat-painike
+    if st.button("🗑️ Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
+
+# Alatunniste
+st.divider()
+st.caption("Policy and Guideline Agent - Powered by Azure OpenAI")
