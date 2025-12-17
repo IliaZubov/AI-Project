@@ -2,6 +2,6 @@
 venv
 *.docx
 *.pdf
-output.json
+*.json
 pycache/
 __pycache__/
