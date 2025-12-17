@@ -1,0 +1,14 @@
+{
+  "id": "nordsure-int-005",
+  "company": "NordSure Insurance",
+  "documentType": "Process Guideline",
+  "title": "Policy Cancellation and Refund Processing Guideline",
+  "version": "1.0",
+  "status": "Active",
+  "effectiveDate": "2023-06-01",
+  "lastUpdated": "2023-06-01",
+  "changeLog": [],
+  "content": "This guideline outlines procedures for processing insurance policy cancellations and associated premium refunds at NordSure Insurance.\n\nPolicyholders may request cancellation in accordance with contractual terms. Cancellation requests must be acknowledged within two business days. Verification of customer identity is mandatory prior to processing.\n\nRefund calculations must be based on the unused coverage period, applicable fees, and policy-specific conditions. Refunds shall not include compensation for unused benefits unless explicitly stated in policy terms.\n\nRefunds must be issued within 14 calendar days of cancellation confirmation. Delays must be documented and communicated to the customer.\n\nSpecial attention must be given to cancellations involving outstanding claims, suspected fraud, or regulatory constraints. Such cases require approval from Claims or Compliance departments.\n\nAll cancellation actions must be fully documented to ensure traceability and audit readiness.",
+  "tags": ["policy", "refunds", "customer-service"],
+  "source": "Internal"
+}

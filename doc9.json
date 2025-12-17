@@ -1,0 +1,20 @@
+{
+  "id": "nordsure-reg-009",
+  "company": "NordSure Insurance",
+  "documentType": "Regulatory Guideline",
+  "title": "Business Continuity and Disaster Recovery Guideline",
+  "version": "1.2",
+  "status": "Active",
+  "effectiveDate": "2021-10-01",
+  "lastUpdated": "2023-12-12",
+  "changeLog": [
+    {
+      "version": "1.2",
+      "date": "2023-12-12",
+      "description": "Updated recovery time objectives for critical systems."
+    }
+  ],
+  "content": "This guideline sets minimum requirements for business continuity and disaster recovery planning at NordSure Insurance.\n\nCritical processes must be identified and documented. Recovery time objectives and recovery point objectives must be defined and tested annually.\n\nDisaster recovery plans must cover cyber incidents, system outages, and physical disruptions.\n\nEmployees must be trained on continuity procedures. Test results must be documented and reported to senior management.\n\nFailure to maintain effective continuity planning may result in regulatory action.",
+  "tags": ["business-continuity", "disaster-recovery"],
+  "source": "Financial Supervisory Authority (Fictional)"
+}

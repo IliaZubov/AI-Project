@@ -1,0 +1,20 @@
+{
+  "id": "nordsure-reg-001",
+  "company": "NordSure Insurance",
+  "documentType": "Regulatory Guideline",
+  "title": "Claims Handling and Fair Settlement Regulation",
+  "version": "1.1",
+  "status": "Active",
+  "effectiveDate": "2023-01-01",
+  "lastUpdated": "2024-06-15",
+  "changeLog": [
+    {
+      "version": "1.1",
+      "date": "2024-06-15",
+      "description": "Clarified timelines for complex claim investigations and added documentation requirements."
+    }
+  ],
+  "content": "This guideline establishes mandatory principles for the fair, timely, and transparent handling of insurance claims at NordSure Insurance. All claims must be processed in accordance with good insurance practice, regulatory fairness standards, and customer protection requirements.\n\nClaims must be acknowledged within two business days of receipt. Initial assessment shall be completed within ten business days unless the claim qualifies as complex due to legal, medical, or fraud-related factors. In such cases, the claimant must be informed in writing of the extended timeline and reasons for delay.\n\nClaim decisions must be based solely on policy terms, verified evidence, and applicable regulations. Employees are prohibited from introducing discretionary limitations not explicitly stated in policy documentation. Any denial or partial settlement must include a clear written explanation referencing specific policy clauses.\n\nNordSure must maintain full traceability of claim handling activities. All communications, documents, and internal assessments shall be retained for a minimum of seven years. Digital records must be immutable and auditable.\n\nDisputes shall be escalated to the Claims Review Committee if not resolved within 30 days. Customers must also be informed of their right to escalate complaints to external dispute resolution bodies.\n\nFailure to comply with these guidelines may result in regulatory sanctions, internal disciplinary action, or financial penalties. Management is responsible for ensuring adequate training and oversight of claims personnel.",
+  "tags": ["claims", "regulation", "customer-protection"],
+  "source": "Financial Supervisory Authority (Fictional)"
+}

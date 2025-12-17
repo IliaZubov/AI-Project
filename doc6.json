@@ -1,0 +1,20 @@
+{
+  "id": "nordsure-int-006",
+  "company": "NordSure Insurance",
+  "documentType": "Internal Policy",
+  "title": "Third-Party Vendor and Outsourcing Risk Policy",
+  "version": "1.1",
+  "status": "Active",
+  "effectiveDate": "2022-11-01",
+  "lastUpdated": "2024-01-20",
+  "changeLog": [
+    {
+      "version": "1.1",
+      "date": "2024-01-20",
+      "description": "Strengthened vendor cybersecurity and data access controls."
+    }
+  ],
+  "content": "NordSure Insurance relies on third-party vendors to support certain operational functions. This policy defines requirements for managing outsourcing and vendor-related risks.\n\nAll vendors must undergo due diligence prior to engagement. This includes financial stability assessment, security controls evaluation, and regulatory compliance review.\n\nContracts must clearly define service scope, data protection responsibilities, audit rights, and termination clauses. Vendors handling personal or sensitive data are subject to enhanced oversight.\n\nOngoing monitoring must be conducted throughout the vendor relationship. Material incidents or control failures must be reported to Risk Management without delay.\n\nOutsourcing of critical functions requires Board-level approval. NordSure retains full accountability for outsourced activities.\n\nNon-compliant vendors may be subject to remediation requirements or contract termination.",
+  "tags": ["vendors", "outsourcing", "risk"],
+  "source": "Internal"
+}
