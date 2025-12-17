@@ -20,7 +20,7 @@ def docx_to_json(docx_path, json_path):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def pdf_to_json(pdf_path, json_path):
+"""def pdf_to_json(pdf_path, json_path):
     data = {
         "file_name": Path(pdf_path).name,
         "pages": []
@@ -32,5 +32,17 @@ def pdf_to_json(pdf_path, json_path):
                 "page": page_num,
                 "text": text.strip()
             })
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)"""
+        
+def pdf_to_json(pdf_path, json_path):
+    data = {
+        "id": Path(pdf_path).name,
+        "content": []
+    }
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_num, page in enumerate(pdf.pages, start=1):
+            text = page.extract_text() or ""
+            data["content"] = text.strip()
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

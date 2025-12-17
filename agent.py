@@ -1,7 +1,10 @@
 import os
 from openai import AzureOpenAI
-from cosmosdb import create_cosmos_client
+from cosmosdb import create_cosmos_client, load_documents, chunk_document, chunk_full_document, chunk_by_paragraph
 import time
+from functions import pdf_to_json
+import json
+from azure.cosmos import exceptions
 
 cosmos_client = create_cosmos_client()
 
@@ -64,6 +67,67 @@ PROMPT_TEMPLATE = """
                 - Mark decision as “Unclear (needs policy)” and ask for the specific policy area or owner to retrieve.
                 """
                 
+PROMPT_TEMPLATE_DOC = """
+                You are DocuPRO, an internal document compliance and quality evaluator.
+                
+                User document for evaluation:
+                {input_doc}
+                
+                Relevant documents:
+                {retrieved_docs}
+                
+                Primary role
+                - Evaluate whether a given text complies with the organization’s internal policies and guidelines.
+                - Policies are provided ONLY via embedded documents (retrieved policy context).
+                - Do NOT rely on external sources, assumptions, or general company practices when assessing compliance.
+                Strict policy usage rules
+                - You MUST base all compliance judgments exclusively on the embedded policy documents.
+                - If a rule is not explicitly present in the embedded documents, you must state that it cannot be evaluated.
+                - Never invent, infer, or extrapolate policy requirements.
+                Evaluation tasks
+                1) Determine overall compliance of the text against the embedded policies.
+                2) Identify specific non-compliant or ambiguous parts of the text.
+                3) Explain clearly what is wrong or missing, referencing the relevant policy sections.
+                4) Propose concrete correction suggestions that would make the text compliant.
+                5) Provide general quality improvement suggestions (3–4 items) using your full professional knowledge, even if they are not policy-mandated.
+                Required output structure (always follow this order)
+                Section 1: Overall assessment
+                - Compliance status: Compliant / Partially compliant / Non-compliant / Cannot be fully assessed
+                - Short rationale (2–3 sentences maximum)
+                Section 2: Policy-based findings
+                For each issue:
+                - Text excerpt: Quote the exact relevant part of the evaluated text
+                - Policy reference: Cite the embedded document identifier and section
+                - Issue: Explain precisely why this part is non-compliant, unclear, or incomplete
+                - Correction suggestion: Provide a specific, actionable rewrite or addition
+                If no issues are found:
+                - Explicitly state that no policy deviations were detected based on the available documents
+                Section 3: General improvement suggestions (non-policy)
+                - Provide 3–4 concise, constructive suggestions
+                - These may cover clarity, tone, structure, risk awareness, completeness, or best practices
+                - These suggestions may use your broader professional knowledge
+                - Clearly distinguish these from policy requirements
+                - Keep the tone positive, supportive, and improvement-oriented
+                Tone and style
+                - Professional, neutral, and constructive
+                - Supportive and improvement-focused, never accusatory
+                - Clear and precise language
+                - Avoid legal conclusions; this is a policy evaluation, not legal advice
+                Handling uncertainty
+                - If embedded policy coverage is incomplete or insufficient:
+                - Clearly state the limitation
+                - Specify what type of policy or document would be required to complete the evaluation
+                Formatting rules
+                - Use clear section headers
+                - Use bullet points where appropriate
+                - Quote text excerpts exactly and sparingly
+                - Do not repeat large portions of the input text
+                You will receive:
+                - The text to be evaluated
+                - Embedded policy documents retrieved via vector search
+                Your goal is to help the author improve the document so it aligns with internal policies while encouraging high-quality, well-structured, and professional documentation.
+"""
+                
 def build_prompt(user_input, docs):
     joined_docs = "\n\n".join(
     [
@@ -76,6 +140,21 @@ def build_prompt(user_input, docs):
         user_input=user_input,
         retrieved_docs=joined_docs
     )
+    
+def build_doc_prompt(input_doc, docs):
+    joined_docs = "\n\n".join(
+    [
+        f"Title: {doc['title']}\n"
+        f"Content: {doc['content']}"
+        for doc in docs
+    ]
+    )
+    return PROMPT_TEMPLATE_DOC.format(
+        retrieved_docs=joined_docs,
+        input_doc=input_doc
+    )
+    
+    
     
 input_tokens_used = None
 output_tokens_used = None
@@ -91,111 +170,158 @@ while True:
     if user_input.lower() in ["exit", "quit"]:
         break
     
-    try:
-        start = time.time()
-        response = client.embeddings.create(
-            model="text-embedding-ada-002",
-            input=user_input
-        )
+    elif user_input == "":
         
-        query_embedding = response.data[0].embedding
+        ### Tästä aloitetaan huomenna ###
         
-        query = f"""
-            SELECT TOP {TOP_K}
-                c.id,
-                c.title,
-                c.content,
-                c.source,
-                c.originalSource,
-                VectorDistance(c.embedding, @q) AS score
-            FROM c
-            ORDER BY VectorDistance(c.embedding, @q)
-            """
-
-        parameters = [
-            { "name": "@q", "value": query_embedding }
-        ]
-
-        results = list(container.query_items(
-            query=query,
-            parameters=parameters,
-            enable_cross_partition_query=True
-        ))
+        ### Tunnista file formatti ja kutsu oikea funktio sen mukaan ###
         
-        #for r in results:
-        #    print(r["source"], "score:", r["score"])
-
-        filtered_results = [
-            r for r in results
-            if r["score"] >= RELEVANCE_THRESHOLD
-        ]
+        ### Promptin kutsu kun uusi tiedosto laadattu ###
         
-        if not filtered_results:
-            print("\nAssistant: I don't know.")
-            print("\nSources: none")
-            print("\n---\n")
-            continue
-
-        retrieved_docs = [
-            {
-                "title": r["title"],
-                "content": r["content"],
-                "source": r["source"],
-                "originalSource": r["originalSource"]
-            }
-            for r in filtered_results
-        ]
+        pdf_to_json("nordsure_security_breach_layoff_notice.pdf", "input_doc.json")
         
-        sources = list(dict.fromkeys(doc["source"] for doc in retrieved_docs))
-            
+        input_doc = "input_doc.json"
+        
         try:
-            response = client.responses.create(
-                model=MODEL_NAME,
-                input=build_prompt(user_input, retrieved_docs),
-                temperature=0.1,
-                max_output_tokens=500,
-                stream=True
+            with open(input_doc, "r", encoding="utf-8") as f:
+                doc = json.load(f)
+                
+                text_to_embed = f"{doc['id']}\n\n{doc['content']}"
+                
+                response = client.embeddings.create(
+                model="text-embedding-ada-002",
+                input=text_to_embed
+                )
+                
+                embedding_vector = response.data[0].embedding
+                print(f"Embedding length: {len(embedding_vector)}")
+                print(embedding_vector[:10])
+                
+                item = {
+                    "id": doc["id"],
+                    "content": doc["content"],
+                    "embedding": embedding_vector
+                }
+                
+                print("Embedding length:", len(item["embedding"]))
+                print("Embedding type:", type(item["embedding"][0]))
+                
+                try:
+                    container.upsert_item(item)
+                    print("Document inserted successfully")
+                except exceptions.CosmosHttpResponseError as e:
+                    print("Failed to insert document: ", e)
+                    
+        except Exception as e:
+                    print("Request failed with error:", e)
+    
+    elif user_input != "":
+        
+        try:
+            start = time.time()
+            response = client.embeddings.create(
+                model="text-embedding-ada-002",
+                input=user_input
             )
             
-            print("\nAssistant:\n\n", end="")
+            query_embedding = response.data[0].embedding
             
-            assistant_response = ""
+            query = f"""
+                SELECT TOP {TOP_K}
+                    c.id,
+                    c.title,
+                    c.content,
+                    c.source,
+                    c.originalSource,
+                    VectorDistance(c.embedding, @q) AS score
+                FROM c
+                ORDER BY VectorDistance(c.embedding, @q)
+                """
+
+            parameters = [
+                { "name": "@q", "value": query_embedding }
+            ]
+
+            results = list(container.query_items(
+                query=query,
+                parameters=parameters,
+                enable_cross_partition_query=True
+            ))
             
-            for event in response:
-                    
-                if event.type == "response.output_text.delta":
-                    print(event.delta, end="")
-                    assistant_response += event.delta
-                    
-                if event.type == "response.completed":
-                    usage = event.response.usage
-                    input_tokens_used = usage.input_tokens
-                    output_tokens_used = usage.output_tokens
+            #for r in results:
+            #    print(r["source"], "score:", r["score"])
+
+            filtered_results = [
+                r for r in results
+                if r["score"] >= RELEVANCE_THRESHOLD
+            ]
+            
+            if not filtered_results:
+                print("\nAssistant: I don't know.")
+                print("\nSources: none")
+                print("\n---\n")
+                continue
+
+            retrieved_docs = [
+                {
+                    "title": r["title"],
+                    "content": r["content"],
+                    "source": r["source"],
+                    "originalSource": r["originalSource"]
+                }
+                for r in filtered_results
+            ]
+            
+            sources = list(dict.fromkeys(doc["source"] for doc in retrieved_docs))
+                
+            try:
+                response = client.responses.create(
+                    model=MODEL_NAME,
+                    input=build_prompt(user_input, retrieved_docs),
+                    temperature=0.1,
+                    max_output_tokens=1000,
+                    stream=True
+                )
+                
+                print("\nAssistant:\n\n", end="")
+                
+                assistant_response = ""
+                
+                for event in response:
+                        
+                    if event.type == "response.output_text.delta":
+                        print(event.delta, end="")
+                        assistant_response += event.delta
+                        
+                    if event.type == "response.completed":
+                        usage = event.response.usage
+                        input_tokens_used = usage.input_tokens
+                        output_tokens_used = usage.output_tokens
+                
+            except Exception as e:
+                print("Request failed with error:", e)
+                
+            print("\n\nSources:", ", ".join(sources))
+                
+            print("\n---\n")
             
         except Exception as e:
             print("Request failed with error:", e)
             
-        print("\n\nSources:", ", ".join(sources))
-            
-        print("\n---\n")
-        
-    except Exception as e:
-        print("Request failed with error:", e)
-        
-    end = time.time()
+        end = time.time()
 
-    latency = end - start
+        latency = end - start
 
-    log_per_query = {
-        "Query": user_input,
-        "Latency": latency,
-        "Model": MODEL_NAME,
-        "Top-K": TOP_K,
-        "Input tokens": input_tokens_used,
-        "Output tokens": output_tokens_used,
-        "Total tokens": input_tokens_used + output_tokens_used
-    }
-    
-    for key in log_per_query:
-        print(f"{key}:", log_per_query[key])
-    print()
+        log_per_query = {
+            "Query": user_input,
+            "Latency": latency,
+            "Model": MODEL_NAME,
+            "Top-K": TOP_K,
+            "Input tokens": input_tokens_used,
+            "Output tokens": output_tokens_used,
+            "Total tokens": input_tokens_used + output_tokens_used
+        }
+        
+        for key in log_per_query:
+            print(f"{key}:", log_per_query[key])
+        print()
