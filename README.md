@@ -1,11 +1,12 @@
 # Group project AI Agent
 
-cosmosDB + AI jolta voi kysyä mitkä sisäiset ja ulkoiset guidelinet pitää ottaa huomioon tässä casessa 
-+ voi syöttää dokumentin ja antaa kommentit onko säädösten mukainen + parannusehdotuksia
-
+CosmosDB + AI "Policy and Guideline Agent"
+    -voi kysyä mitkä sisäiset ja ulkoiset guidelinet pitää ottaa annetussa käyttäjän määrittelemässä tapauksessa 
+    -voi syöttää pdf tai docx tai txt/json dokumentin ja antaa kommentit onko säädösten mukainen, mitkä kohdat eivät ja antaa yleisiä               parannusehdotuksia
+    -Frontend hyvin kevyt web sivu Streamlit-applikaatiolla
 ## Tehtävää: 
 ### Python: 
-    1. uusien dokumenttien syöttö ja korvaaminen uudella versiolla + chunking vektorointi 
-    2. kysymysprompt käyttäjältä + Chatgpt query jolla vastaus guidelineistä  
-    3. dokumentin lataus tarkistettavaksi ja kommentoitavaksi  
-    4. koodi jolla kommentoi 3:ssa ladattua tiedostoa
+    1. Uusien dokumenttien syöttö ja korvaaminen uudella versiolla + chunking vektorointi 
+    2. Kysymysprompt käyttäjältä + Chatgpt query jolla vastaus guidelineistä  
+    3. Dokumentin lataus tarkistettavaksi ja kommentoitavaksi  
+    4. Koodi jolla kommentoi 3:ssa ladattua tiedostoa (onko säädösten mukainen, mitkä kohdat eivät ja antaa yleisiä parannusehdotuksia)
