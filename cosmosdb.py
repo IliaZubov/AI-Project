@@ -77,7 +77,7 @@ def enrich_chunks(doc, raw_chunks):
         )
     return enriched
 
-def chunk_document(doc, n_sentences=2):
+def chunk_document(doc):
     if len(split_into_sentences(doc["content"])) <= 10:
         raw = chunk_full_document(doc)
     elif len(split_into_sentences(doc["content"])) > 10:
@@ -120,8 +120,6 @@ if __name__ in "__main__":
     for doc in documents:
         
         chunks = chunk_document(doc)
-                
-        #start = time.time()
         
         for chunk in chunks:
             

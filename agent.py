@@ -1,11 +1,7 @@
 import os
 from openai import AzureOpenAI
-import json
-import sys
-from azure.cosmos import CosmosClient, exceptions
-import re
-import time
 from cosmosdb import create_cosmos_client
+import time
 
 cosmos_client = create_cosmos_client()
 
@@ -47,13 +43,14 @@ PROMPT_TEMPLATE = """
                 - Bullets must be short, direct, and action-oriented.
                 - Never invent policy. Never assume a rule exists if not in Policy Context.
                 - If policies conflict or are ambiguous, state the conflict and give the safest compliant path.
+                - Always include any time limits defined in the document
                 Answer structure (ALWAYS)
-                - **Decision:** Allowed / Not allowed / Allowed with conditions / Unclear (needs more info)
-                - **Policy basis:** Cite the relevant excerpt IDs and quote <= 20 words per excerpt (max 3 excerpts)
-                - **Required actions:** Concrete steps the user must take (approvals, documentation, escalation)
-                - **Prohibited actions:** What not to do (if applicable)
-                - **Open questions:** Only if “Unclear” or “Allowed with conditions” needs case details
-                - **Escalation:** Who/what team to contact when needed
+                **Decision:** Allowed / Not allowed / Allowed with conditions / Unclear (needs more info)
+                **Policy basis:** Cite the relevant excerpt IDs and quote <= 30 words per excerpt (max 3 excerpts)
+                **Required actions:** Concrete steps the user must take (approvals, documentation, escalation)
+                **Prohibited actions:** What not to do (if applicable)
+                **Open questions:** Only if “Unclear” or “Allowed with conditions” needs case details
+                **Escalation:** Who/what team to contact when needed
                 Risk handling:
                 - If the user asks for legal advice, respond as internal policy guidance and recommend contacting Legal/Compliance.
                 - If the user requests wrongdoing, evasion, or policy-bypass, refuse and provide compliant alternatives (still bullet points).
@@ -79,6 +76,9 @@ def build_prompt(user_input, docs):
         user_input=user_input,
         retrieved_docs=joined_docs
     )
+    
+input_tokens_used = None
+output_tokens_used = None
 
 while True:
     
@@ -92,6 +92,7 @@ while True:
         break
     
     try:
+        start = time.time()
         response = client.embeddings.create(
             model="text-embedding-ada-002",
             input=user_input
@@ -99,14 +100,13 @@ while True:
         
         query_embedding = response.data[0].embedding
         
-        print("Query embedding lengths: ", len(query_embedding)) #For test purpose
-        
         query = f"""
             SELECT TOP {TOP_K}
                 c.id,
                 c.title,
                 c.content,
                 c.source,
+                c.originalSource,
                 VectorDistance(c.embedding, @q) AS score
             FROM c
             ORDER BY VectorDistance(c.embedding, @q)
@@ -121,6 +121,9 @@ while True:
             parameters=parameters,
             enable_cross_partition_query=True
         ))
+        
+        #for r in results:
+        #    print(r["source"], "score:", r["score"])
 
         filtered_results = [
             r for r in results
@@ -144,9 +147,6 @@ while True:
         ]
         
         sources = list(dict.fromkeys(doc["source"] for doc in retrieved_docs))
-        
-        input_tokens_used = None
-        output_tokens_used = None
             
         try:
             response = client.responses.create(
@@ -157,7 +157,7 @@ while True:
                 stream=True
             )
             
-            print("\nAssistant: ", end="")
+            print("\nAssistant:\n\n", end="")
             
             assistant_response = ""
             
@@ -182,13 +182,13 @@ while True:
     except Exception as e:
         print("Request failed with error:", e)
         
-    #end = time.time()
+    end = time.time()
 
-    #latency = end - start
-    
+    latency = end - start
+
     log_per_query = {
         "Query": user_input,
-        #"Latency": latency,
+        "Latency": latency,
         "Model": MODEL_NAME,
         "Top-K": TOP_K,
         "Input tokens": input_tokens_used,
@@ -198,3 +198,4 @@ while True:
     
     for key in log_per_query:
         print(f"{key}:", log_per_query[key])
+    print()
