@@ -1,6 +1,7 @@
 from docx import Document
 import json
 from pathlib import Path
+
 def docx_to_json(docx_path, json_path):
     doc = Document(docx_path)
     data = {
