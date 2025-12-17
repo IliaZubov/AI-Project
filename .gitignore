@@ -1,2 +1,7 @@
 .env
 venv
+*.docx
+*.pdf
+output.json
+pycache/
+__pycache__/
