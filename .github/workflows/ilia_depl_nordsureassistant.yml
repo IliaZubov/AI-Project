@@ -63,4 +63,4 @@ jobs:
         with:
           app-name: 'NordSureAssistant'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_B5DBB86C77654D00B9D60011AFA8E82F }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_191149A4B11F4631A7A68AE25C243781 }}
