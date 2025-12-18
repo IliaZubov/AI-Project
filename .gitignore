@@ -5,3 +5,4 @@ venv
 *.json
 pycache/
 __pycache__/
+*.txt
