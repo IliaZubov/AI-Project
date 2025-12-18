@@ -3,7 +3,7 @@ import json
 import pdfplumber
 from pathlib import Path
 from docx import Document
-from functions import pdf_to_json, docx_to_json, txt_to_json
+
 
 def docx_to_json(docx_path):
     doc = Document(docx_path)
@@ -21,8 +21,6 @@ def docx_to_json(docx_path):
     with open("output_doc.json", "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     return data
-
-
         
 def pdf_to_json(pdf_path):
     data = {
