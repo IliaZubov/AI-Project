@@ -77,44 +77,14 @@ with col1:
     )
     
     if uploaded_file is not None:
-        doc_function(uploaded_file["name"])
-    
-    """if uploaded_files:
-        for uploaded_file in uploaded_files:
-            file_type = uploaded_file.name.split('.')[-1].lower()
-            
-            # Luo väliaikainen tiedosto
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_type}") as tmp_file:
-                tmp_file.write(uploaded_file.getvalue())
-                tmp_path = tmp_file.name
-            
-            try:
-                # Muunna tiedostotyypin mukaan
-                if file_type == "pdf":
-                    json_data = pdf_to_json_data(tmp_path)
-                    st.success(f"✅ Converted {uploaded_file.name} (PDF)")
-                elif file_type == "docx":
-                    json_data = docx_to_json_data(tmp_path)
-                    st.success(f"✅ Converted {uploaded_file.name} (DOCX)")
+        doc_function(uploaded_file.name)
+        
                 
-                # Näytä JSON-esikatselu
-                with st.expander(f"Preview: {uploaded_file.name}"):
-                    st.json(json_data)
-                
-                # Lataa-painike
-                json_filename = uploaded_file.name.rsplit('.', 1)[0] + '.json'
-                st.download_button(
-                    label=f"💾 Download {json_filename}",
-                    data=json.dumps(json_data, ensure_ascii=False, indent=2),
-                    file_name=json_filename,
-                    mime="application/json"
-                )
-                
-            except Exception as e:
-                st.error(f"❌ Error converting {uploaded_file.name}: {str(e)}")
-            finally:
-                # Siivoa väliaikainen tiedosto
-                os.unlink(tmp_path)"""
+    chat_container = st.container()
+    with chat_container:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
 # Oikea sarake - Chat-käyttöliittymä
 with col2:
@@ -147,7 +117,7 @@ with col2:
             
             # Valmistele viestit API:lle
             api_messages = [{"role": m["role"], "content": m["content"]} 
-                          for m in st.session_state.messages]
+                        for m in st.session_state.messages]
             
             # Kutsu Azure OpenAI
             response = client.chat.completions.create(
