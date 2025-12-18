@@ -1,11 +1,9 @@
 import os
 from openai import AzureOpenAI
-from cosmosdb import create_cosmos_client, load_documents, chunk_document, chunk_full_document, chunk_by_paragraph
+from cosmosdb import create_cosmos_client
 import time
 from functions import pdf_to_json, docx_to_json, txt_to_json
 import json
-from azure.cosmos import exceptions
-
 
 cosmos_client = create_cosmos_client()
 
@@ -173,11 +171,8 @@ while True:
     
     elif user_input == "":
         
-        ### Tästä aloitetaan huomenna ###
-        filename = r"C:\temp python\sample.txt"
+        filename = "nordsure_security_breach_layoff_notice.pdf"
 
-        ### Tunnista file formatti ja kutsu oikea funktio sen mukaan ###
-        # Muunna tiedostotyypin mukaan
         file_type = filename.split('.')[-1].lower()
         print(f"File type: {file_type}")
 
@@ -204,15 +199,6 @@ while True:
         with open("input_doc.json", "w", encoding="utf-8") as f:
             json.dump(json_data, f, ensure_ascii=False, indent=2)
         print(f"✅ Saved to input_doc.json")
-
-        # printataan JSON data
-        print("\n" + "="*50)
-        print(json.dumps(json_data, indent=2, ensure_ascii=False))
-        print("="*50)
-        print(f"\nJSON filename: {json_filename}")
-        print(f"Original file path: {filename}")
-
-        ### Promptin kutsu kun uusi tiedosto laadattu ###
         
         input_doc = "input_doc.json"
         
@@ -228,27 +214,87 @@ while True:
                 )
                 
                 embedding_vector = response.data[0].embedding
-                print(f"Embedding length: {len(embedding_vector)}")
-                print(embedding_vector[:10])
-                
-                item = {
-                    "id": doc["id"],
-                    "content": doc["content"],
-                    "embedding": embedding_vector
-                }
-                
-                print("Embedding length:", len(item["embedding"]))
-                print("Embedding type:", type(item["embedding"][0]))
-                
-                try:
-                    container.upsert_item(item)
-                    print("Document inserted successfully")
-                except exceptions.CosmosHttpResponseError as e:
-                    print("Failed to insert document: ", e)
                     
         except Exception as e:
                     print("Request failed with error:", e)
-    
+                    
+        query = f"""
+                SELECT TOP {TOP_K}
+                    c.id,
+                    c.title,
+                    c.content,
+                    c.source,
+                    c.originalSource,
+                    VectorDistance(c.embedding, @q) AS score
+                FROM c
+                ORDER BY VectorDistance(c.embedding, @q)
+                """
+
+        parameters = [
+            { "name": "@q", "value": embedding_vector }
+        ]
+
+        results = list(container.query_items(
+            query=query,
+            parameters=parameters,
+            enable_cross_partition_query=True
+        ))
+        
+
+        filtered_results = [
+            r for r in results
+            if r["score"] >= RELEVANCE_THRESHOLD
+        ]
+        
+        if not filtered_results:
+            print("\nAssistant: I don't know.")
+            print("\nSources: none")
+            print("\n---\n")
+            continue
+
+        retrieved_docs = [
+            {
+                "title": r["title"],
+                "content": r["content"],
+                "source": r["source"],
+                "originalSource": r["originalSource"]
+            }
+            for r in filtered_results
+        ]
+        
+        sources = list(dict.fromkeys(doc["source"] for doc in retrieved_docs))
+                    
+        try:
+            response = client.responses.create(
+                    model=MODEL_NAME,
+                    input=build_doc_prompt(doc['content'], retrieved_docs),
+                    temperature=0.1,
+                    max_output_tokens=1000,
+                    stream=True
+                )
+                
+            print("\nAssistant:\n\n", end="")
+            
+            assistant_response = ""
+            
+            for event in response:
+                    
+                if event.type == "response.output_text.delta":
+                    print(event.delta, end="")
+                    assistant_response += event.delta
+                    
+                if event.type == "response.completed":
+                    usage = event.response.usage
+                    input_tokens_used = usage.input_tokens
+                    output_tokens_used = usage.output_tokens
+                
+        except Exception as e:
+            print("Request failed with error:", e)
+            
+        print("\n\nSources:", ", ".join(sources))
+            
+        print("\n---\n")
+
     elif user_input != "":
         
         try:
@@ -281,9 +327,6 @@ while True:
                 parameters=parameters,
                 enable_cross_partition_query=True
             ))
-            
-            #for r in results:
-            #    print(r["source"], "score:", r["score"])
 
             filtered_results = [
                 r for r in results
