@@ -3,14 +3,12 @@ import os
 import json
 import tempfile
 from pathlib import Path
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 from openai import AzureOpenAI
 import pdfplumber
 from docx import Document
 
-# Ajaminen TL >cd "c:\Local Python projects\AI-Project" ; .\venv\Scripts\python.exe -m streamlit run app.py 
-# Lataa ympäristömuuttujat
-load_dotenv()
+from document_check import doc_function
 
 # Alusta Azure OpenAI client
 @st.cache_resource
@@ -26,8 +24,7 @@ def get_azure_client():
     )
 
 # Muunnos funktiot
-def docx_to_json_data(docx_path):
-    """Muunna DOCX JSON-tietorakenteeksi"""
+"""def docx_to_json_data(docx_path):
     doc = Document(docx_path)
     data = {
         "file_name": Path(docx_path).name,
@@ -43,7 +40,6 @@ def docx_to_json_data(docx_path):
     return data
 
 def pdf_to_json_data(pdf_path):
-    """Muunna PDF JSON-tietorakenteeksi"""
     data = {
         "file_name": Path(pdf_path).name,
         "pages": []
@@ -55,7 +51,7 @@ def pdf_to_json_data(pdf_path):
                 "page": page_num,
                 "text": text.strip()
             })
-    return data
+    return data"""
 
 # Sivun asetukset
 st.set_page_config(
@@ -74,13 +70,16 @@ with col1:
     st.header("🔄 Guideline and Compliance Checker")
     st.write("Upload PDF or DOCX files to check compliance and get improvement suggestions.")
     
-    uploaded_files = st.file_uploader(
+    uploaded_file = st.file_uploader(
         "Drag and drop files here",
-        type=["pdf", "docx"],
-        accept_multiple_files=True
+        type=["pdf", "docx", "txt", "json"],
+        accept_multiple_files=False
     )
     
-    if uploaded_files:
+    if uploaded_file is not None:
+        doc_function(uploaded_file["name"])
+    
+    """if uploaded_files:
         for uploaded_file in uploaded_files:
             file_type = uploaded_file.name.split('.')[-1].lower()
             
@@ -115,7 +114,7 @@ with col1:
                 st.error(f"❌ Error converting {uploaded_file.name}: {str(e)}")
             finally:
                 # Siivoa väliaikainen tiedosto
-                os.unlink(tmp_path)
+                os.unlink(tmp_path)"""
 
 # Oikea sarake - Chat-käyttöliittymä
 with col2:
