@@ -6,3 +6,5 @@ venv
 pycache/
 __pycache__/
 *.txt
+.vscode/
+

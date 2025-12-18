@@ -131,17 +131,26 @@ def doc_function(filename):
         with open(input_doc, "r", encoding="utf-8") as f:
             doc = json.load(f)
             
-            text_to_embed = f"{doc['id']}\n\n{doc['content']}"
+            # Extract content based on structure
+            if 'content' in doc:
+                text_to_embed = doc['content']
+            elif 'paragraphs' in doc:
+                text_to_embed = "\n".join([p['text'] for p in doc['paragraphs']])
+            elif 'pages' in doc:
+                text_to_embed = "\n".join([p['text'] for p in doc['pages']])
+            else:
+                text_to_embed = str(doc)
             
             response = client.embeddings.create(
             model="text-embedding-ada-002",
-            input=text_to_embed
+            input=text_to_embed[:8000]  # Limit to avoid token limits
             )
             
             embedding_vector = response.data[0].embedding
                 
     except Exception as e:
                 print("Request failed with error:", e)
+                return {"response": f"Error: {str(e)}", "sources": []}
                 
     MODEL_NAME = "gpt-4.1"
     TOP_K = 3                   
@@ -196,38 +205,19 @@ def doc_function(filename):
     try:
         response = client.responses.create(
                 model=MODEL_NAME,
-                input=build_doc_prompt(doc['content'], retrieved_docs),
+                input=build_doc_prompt(text_to_embed, retrieved_docs),
                 temperature=0.1,
                 max_output_tokens=1000,
-                stream=True
+                stream=False
             )
             
-        #print("\nAssistant:\n\n", end="")
-        
-        assistant_response = ""
-        
-        for event in response:
-                
-            """if event.type == "response.output_text.delta":
-                print(event.delta, end="")
-                assistant_response += event.delta"""
-                
-            if event.type == "response.completed":
-                usage = event.response.usage
-                input_tokens_used = usage.input_tokens
-                output_tokens_used = usage.output_tokens
+        assistant_response = response.output_text
             
     except Exception as e:
         print("Request failed with error:", e)
-        
-    #print("\n\nSources:", ", ".join(sources))
-        
-    #print("\n---\n")
-    
-    assistant_response = event.response.output[0].content[0].text
+        assistant_response = f"Error: {str(e)}"
     
     return {
         "response": assistant_response,
         "sources": sources
     }
-    
