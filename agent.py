@@ -287,6 +287,7 @@ while True:
                     usage = event.response.usage
                     input_tokens_used = usage.input_tokens
                     output_tokens_used = usage.output_tokens
+                    #print (f"\n\n--------\n{event.response.output[0].content[0].text}")
                 
         except Exception as e:
             print("Request failed with error:", e)

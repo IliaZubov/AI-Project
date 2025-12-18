@@ -7,8 +7,8 @@ from pathlib import Path
 from openai import AzureOpenAI
 import pdfplumber
 from docx import Document
-
 from document_check import doc_function
+from chat import chat_function
 
 # Alusta Azure OpenAI client
 @st.cache_resource
@@ -22,36 +22,6 @@ def get_azure_client():
         api_version=api_version,
         azure_endpoint=azure_endpoint
     )
-
-# Muunnos funktiot
-"""def docx_to_json_data(docx_path):
-    doc = Document(docx_path)
-    data = {
-        "file_name": Path(docx_path).name,
-        "paragraphs": []
-    }
-    for i, para in enumerate(doc.paragraphs):
-        text = para.text.strip()
-        if text:
-            data["paragraphs"].append({
-                "index": i,
-                "text": text
-            })
-    return data
-
-def pdf_to_json_data(pdf_path):
-    data = {
-        "file_name": Path(pdf_path).name,
-        "pages": []
-    }
-    with pdfplumber.open(pdf_path) as pdf:
-        for page_num, page in enumerate(pdf.pages, start=1):
-            text = page.extract_text() or ""
-            data["pages"].append({
-                "page": page_num,
-                "text": text.strip()
-            })
-    return data"""
 
 # Sivun asetukset
 st.set_page_config(
@@ -77,30 +47,24 @@ with col1:
     )
     
     if uploaded_file is not None:
-        doc_function(uploaded_file.name)
+        result = doc_function(uploaded_file.name)
         
                 
-    chat_container = st.container()
-    with chat_container:
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+
+        st.markdown("### :page_facing_up: Compliance Evaluation")
+        st.markdown(result["response"])
+        if result["sources"]:
+            st.markdown("#### :books: Sources")
+            st.write(", ".join(result["sources"]))
 
 # Oikea sarake - Chat-käyttöliittymä
 with col2:
     st.header("💬 Guideline Assistant")
-    st.write("Chat with Azure OpenAI")
+    st.write("Chat with NordSure AI Assistant")
     
     # Alusta chat-historia
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    
-    # Näytä chat-viestit
-    chat_container = st.container()
-    with chat_container:
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
     
     # Chat-syöte
     if prompt := st.chat_input("Type your message here..."):
@@ -113,31 +77,27 @@ with col2:
         
         # Hae AI-vastaus
         try:
-            client = get_azure_client()
-            
-            # Valmistele viestit API:lle
-            api_messages = [{"role": m["role"], "content": m["content"]} 
-                        for m in st.session_state.messages]
-            
-            # Kutsu Azure OpenAI
-            response = client.chat.completions.create(
-                model="gpt-4o",  # Päivitä käyttöönottonimellä
-                messages=api_messages,
-                temperature=0.7,
-                max_tokens=800
-            )
-            
-            assistant_response = response.choices[0].message.content
+            result = chat_function(prompt)
             
             # Lisää avustajan vastaus chat-historiaan
-            st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+            st.session_state.messages.append({"role": "assistant", "content": f"{result['response']}\n\n---\nSources: {result['sources']}"})
             
             # Näytä avustajan vastaus
             with st.chat_message("assistant"):
-                st.markdown(assistant_response)
+                st.markdown(result["response"])
+                if result["sources"]:
+                    st.markdown("#### :books: Sources")
+                    st.write(", ".join(result["sources"]))
                 
         except Exception as e:
             st.error(f"Error: {str(e)}")
+            
+    # Näytä chat-viestit
+    chat_container = st.container()
+    with chat_container:
+        for message in st.session_state.messages[:-2]:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
     
     # Tyhjennä chat-painike
     if st.button("🗑️ Clear Chat History"):
