@@ -3,12 +3,13 @@ import os
 import json
 import tempfile
 from pathlib import Path
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 from openai import AzureOpenAI
 import pdfplumber
 from docx import Document
 from document_check import doc_function
 from chat import chat_function
+load_dotenv()
 
 # Alusta Azure OpenAI client
 @st.cache_resource
@@ -47,15 +48,26 @@ with col1:
     )
     
     if uploaded_file is not None:
-        result = doc_function(uploaded_file.name)
+        # Save uploaded file to temporary location
+        file_type = uploaded_file.name.split('.')[-1].lower()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_type}") as tmp:
+            tmp.write(uploaded_file.getvalue())
+            tmp_path = tmp.name
         
-                
-
-        st.markdown("### :page_facing_up: Compliance Evaluation")
-        st.markdown(result["response"])
-        if result["sources"]:
-            st.markdown("#### :books: Sources")
-            st.write(", ".join(result["sources"]))
+        try:
+            with st.spinner('🔍 Analyzing document...'):
+                result = doc_function(tmp_path)
+            
+            st.markdown("### :page_facing_up: Compliance Evaluation")
+            st.markdown(result["response"])
+            if result["sources"]:
+                st.markdown("#### :books: Sources")
+                st.write(", ".join(result["sources"]))
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+        finally:
+            # Clean up temp file
+            os.unlink(tmp_path)
 
 # Oikea sarake - Chat-käyttöliittymä
 with col2:
