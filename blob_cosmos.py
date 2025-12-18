@@ -5,13 +5,11 @@ import sys
 from azure.cosmos import CosmosClient, exceptions
 import re
 from pathlib import Path
-from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
-account_url = "https://ilzufall25.blob.core.windows.net/"
-credential = DefaultAzureCredential()
+conn_str = os.getenv("BLOB_CONNECTION_STRING")
 
-blob_service = BlobServiceClient(account_url, credential=credential)
+blob_service = BlobServiceClient.from_connection_string(conn_str)
 
 container_name = "ilzu"
 container_client = blob_service.get_container_client(container_name)
@@ -39,14 +37,6 @@ def create_cosmos_client():
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
-    
-"""def load_documents(file_list):
-    documents = []
-    for file in file_list:
-        with open(file, "r", encoding="utf-8") as f:
-            doc = json.load(f)
-            documents.append(doc)
-    return documents"""
     
 def load_documents(container_client):
     documents = []
@@ -128,14 +118,6 @@ def chunk_document(doc):
     
     return enrich_chunks(doc,raw)
 
-"""folder = Path("C:/Users/IliaZubov/Documents/Skillio/week 9/AI-Project/docs")
-
-doc_files = [
-        str(file.resolve())  # full absolute path
-        for file in folder.iterdir()
-        if file.is_file() and file.suffix.lower() in (".json")
-    ]"""
-
 if __name__ in "__main__":
     
     cosmos_client = create_cosmos_client()
@@ -149,11 +131,6 @@ if __name__ in "__main__":
     container_client = blob_service.get_container_client("ilzu")
     
     documents = load_documents(container_client)
-    
-    print("Document example:")
-    print(json.dumps(documents[0], indent=2))
-    
-    #documents = load_documents(doc_files)
     
     api_key = os.getenv("AZURE_API_KEY")
     api_version = os.getenv("AZURE_API_VERSION")
@@ -173,7 +150,6 @@ if __name__ in "__main__":
     
     for doc in documents:
         
-        #chunks = chunk_document(doc)
         if "content" not in doc:
             print(f"Skipping doc {doc.get('id', 'unknown')} — no content field")
             continue
