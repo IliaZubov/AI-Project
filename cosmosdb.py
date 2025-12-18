@@ -4,7 +4,7 @@ import json
 import sys
 from azure.cosmos import CosmosClient, exceptions
 import re
-
+from pathlib import Path
 
 def create_cosmos_client():
 
@@ -86,8 +86,14 @@ def chunk_document(doc):
         raise ValueError("Unknown chunking strategy")
     
     return enrich_chunks(doc,raw)
-    
-doc_files = ["doc1.json", "doc2.json", "doc3.json", "doc4.json", "doc5.json", "doc6.json", "doc7.json", "doc8.json", "doc9.json", "doc10.json"]
+
+folder = Path("C:/Users/IliaZubov/Documents/Skillio/week 9/AI-Project/docs")
+
+doc_files = [
+        str(file.resolve())  # full absolute path
+        for file in folder.iterdir()
+        if file.is_file() and file.suffix.lower() in (".json")
+    ]
 
 if __name__ in "__main__":
     
