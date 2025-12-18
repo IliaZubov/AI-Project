@@ -5,6 +5,25 @@ import sys
 from azure.cosmos import CosmosClient, exceptions
 import re
 from pathlib import Path
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+
+account_url = "https://ilzufall25.blob.core.windows.net/"
+credential = DefaultAzureCredential()
+
+blob_service = BlobServiceClient(account_url, credential=credential)
+
+container_name = "ilzu"
+container_client = blob_service.get_container_client(container_name)
+
+doc_files = []
+
+for blob in container_client.list_blobs():
+    if blob.name.startswith("docs/") and blob.name.endswith(".json"):
+        blob_client = container_client.get_blob_client(blob.name)
+        raw = blob_client.download_blob().readall()
+        json_doc = json.loads(raw)
+        doc_files.append(json_doc)
 
 def create_cosmos_client():
 
@@ -21,13 +40,37 @@ def create_cosmos_client():
         print(f"Error: {e}")
         sys.exit(1)
     
-def load_documents(file_list):
+"""def load_documents(file_list):
     documents = []
     for file in file_list:
         with open(file, "r", encoding="utf-8") as f:
             doc = json.load(f)
             documents.append(doc)
+    return documents"""
+    
+def load_documents(container_client):
+    documents = []
+
+    for blob in container_client.list_blobs():
+        if blob.name.startswith("docs/") and blob.name.endswith(".json"):
+            blob_client = container_client.get_blob_client(blob.name)
+            raw = blob_client.download_blob().readall()
+            doc = json.loads(raw)
+
+            # Skip non-dict JSON files
+            if not isinstance(doc, dict):
+                print(f"Skipping blob {blob.name} — not a JSON object")
+                continue
+
+            # Skip objects without content
+            if "content" not in doc:
+                print(f"Skipping blob {blob.name} — no content field")
+                continue
+
+            documents.append(doc)
+
     return documents
+
 
 def split_into_sentences(text):
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
@@ -85,13 +128,13 @@ def chunk_document(doc):
     
     return enrich_chunks(doc,raw)
 
-folder = Path("C:/Users/IliaZubov/Documents/Skillio/week 9/AI-Project/docs")
+"""folder = Path("C:/Users/IliaZubov/Documents/Skillio/week 9/AI-Project/docs")
 
 doc_files = [
         str(file.resolve())  # full absolute path
         for file in folder.iterdir()
         if file.is_file() and file.suffix.lower() in (".json")
-    ]
+    ]"""
 
 if __name__ in "__main__":
     
@@ -103,7 +146,14 @@ if __name__ in "__main__":
     except exceptions.CosmosHttpResponseError as e:
         print(f"Could not list databases: {e}")
     
-    documents = load_documents(doc_files)
+    container_client = blob_service.get_container_client("ilzu")
+    
+    documents = load_documents(container_client)
+    
+    print("Document example:")
+    print(json.dumps(documents[0], indent=2))
+    
+    #documents = load_documents(doc_files)
     
     api_key = os.getenv("AZURE_API_KEY")
     api_version = os.getenv("AZURE_API_VERSION")
@@ -123,6 +173,11 @@ if __name__ in "__main__":
     
     for doc in documents:
         
+        #chunks = chunk_document(doc)
+        if "content" not in doc:
+            print(f"Skipping doc {doc.get('id', 'unknown')} — no content field")
+            continue
+
         chunks = chunk_document(doc)
         
         for chunk in chunks:

@@ -1,6 +1,6 @@
 import os
 from openai import AzureOpenAI
-from cosmosdb import create_cosmos_client
+from blob_cosmos import create_cosmos_client
 import time
 from functions import pdf_to_json, docx_to_json, txt_to_json
 import json

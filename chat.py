@@ -1,6 +1,6 @@
 import os
 from openai import AzureOpenAI
-from cosmosdb import create_cosmos_client
+from blob_cosmos import create_cosmos_client
 
 
 cosmos_client = create_cosmos_client()
