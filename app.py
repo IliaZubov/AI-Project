@@ -9,6 +9,7 @@ import pdfplumber
 from docx import Document
 from document_check import doc_function
 from chat import chat_function
+#load_dotenv()
 
 # Alusta Azure OpenAI client
 @st.cache_resource
@@ -46,30 +47,44 @@ with col1:
         accept_multiple_files=False
     )
     
-    if uploaded_file is not None:
-        result = doc_function(uploaded_file.name)
+    if uploaded_file is not None and uploaded_file.name != st.session_state.get("last_file", None):
+        # Save uploaded file to temporary location
+        st.session_state.last_file = uploaded_file.name
+        file_type = uploaded_file.name.split('.')[-1].lower()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_type}") as tmp:
+            tmp.write(uploaded_file.getvalue())
+            tmp_path = tmp.name
         
-                
-
-        st.markdown("### :page_facing_up: Compliance Evaluation")
-        st.markdown(result["response"])
-        if result["sources"]:
-            st.markdown("#### :books: Sources")
-            st.write(", ".join(result["sources"]))
-
-# Oikea sarake - Chat-käyttöliittymä
-with col2:
+        try:
+            with st.spinner('🔍 Analyzing document...'):
+                result = doc_function(tmp_path)
+            
+            st.markdown("### :page_facing_up: Compliance Evaluation")
+            st.markdown(result["response"])
+            if result["sources"]:
+                st.markdown("#### :books: Sources")
+                st.write(", ".join(result["sources"]))
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
+        finally:
+            # Clean up temp file
+            os.unlink(tmp_path)
+            
+@st.fragment
+def chat_section():
     st.header("💬 Guideline Assistant")
     st.write("Chat with NordSure AI Assistant")
     
     # Alusta chat-historia
     if "messages" not in st.session_state:
         st.session_state.messages = []
+        
+    if st.button("🗑️ Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
     
     # Chat-syöte
     if prompt := st.chat_input("Type your message here..."):
-        # Lisää käyttäjän viesti chat-historiaan
-        st.session_state.messages.append({"role": "user", "content": prompt})
         
         # Näytä käyttäjän viesti
         with st.chat_message("user"):
@@ -79,8 +94,7 @@ with col2:
         try:
             result = chat_function(prompt)
             
-            # Lisää avustajan vastaus chat-historiaan
-            st.session_state.messages.append({"role": "assistant", "content": f"{result['response']}\n\n---\nSources: {result['sources']}"})
+            
             
             # Näytä avustajan vastaus
             with st.chat_message("assistant"):
@@ -88,21 +102,24 @@ with col2:
                 if result["sources"]:
                     st.markdown("#### :books: Sources")
                     st.write(", ".join(result["sources"]))
+            
+            chat_container = st.container()
+            with chat_container:
+                for message in st.session_state.messages:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+                        
+            # Lisää avustajan vastaus chat-historiaan
+            st.session_state.messages.insert(0,{"role": "user", "content": prompt})
+            st.session_state.messages.insert(1, {"role": "assistant", "content": result['response']})
                 
         except Exception as e:
             st.error(f"Error: {str(e)}")
             
-    # Näytä chat-viestit
-    chat_container = st.container()
-    with chat_container:
-        for message in st.session_state.messages[:-2]:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-    
-    # Tyhjennä chat-painike
-    if st.button("🗑️ Clear Chat History"):
-        st.session_state.messages = []
-        st.rerun()
+
+# Oikea sarake - Chat-käyttöliittymä
+with col2:
+    chat_section()
 
 # Alatunniste
 st.divider()
