@@ -4,7 +4,7 @@ import json
 import sys
 from azure.cosmos import CosmosClient, exceptions
 import re
-import time
+
 
 def create_cosmos_client():
 

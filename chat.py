@@ -54,7 +54,6 @@ PROMPT_TEMPLATE = """
                 - Avoid unnecessary sections if they are not applicable.
 
                 Answer structure (use when applicable):
-                **Decision:** Allowed / Not allowed / Allowed with conditions / Unclear / I don’t know  
                 **Policy basis:** Relevant excerpt IDs with short quotes (≤30 words per excerpt, max 3)  
                 **Timelines / limits:** Explicit deadlines, time limits, or state “No timelines specified”  
                 **Required actions:** What must be done to comply (approvals, documentation, escalation)  
