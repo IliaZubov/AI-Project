@@ -98,8 +98,6 @@ def build_doc_prompt(input_doc, docs):
     
 def doc_function(filename):
 
-#filename = "nordsure_security_breach_layoff_notice.pdf"
-
     file_type = filename.split('.')[-1].lower()
     print(f"File type: {file_type}")
 
@@ -204,15 +202,15 @@ def doc_function(filename):
                 stream=True
             )
             
-        print("\nAssistant:\n\n", end="")
+        #print("\nAssistant:\n\n", end="")
         
         assistant_response = ""
         
         for event in response:
                 
-            if event.type == "response.output_text.delta":
+            """if event.type == "response.output_text.delta":
                 print(event.delta, end="")
-                assistant_response += event.delta
+                assistant_response += event.delta"""
                 
             if event.type == "response.completed":
                 usage = event.response.usage
@@ -222,6 +220,14 @@ def doc_function(filename):
     except Exception as e:
         print("Request failed with error:", e)
         
-    print("\n\nSources:", ", ".join(sources))
+    #print("\n\nSources:", ", ".join(sources))
         
-    print("\n---\n")
+    #print("\n---\n")
+    
+    assistant_response = event.response.output[0].content[0].text
+    
+    return {
+        "response": assistant_response,
+        "sources": sources
+    }
+    
