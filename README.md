@@ -24,3 +24,7 @@ CosmosDB + AI "Policy and Guideline Agent" vakuutusyhtiölle / pankille yms.
         criteria and risks & constraints
         • Demo of the solution 
         • Repository containing the code
+    3. Extra: Azure web appina toimimaan
+
+### Perjantai
+    1. Presentaatio. On valmis
