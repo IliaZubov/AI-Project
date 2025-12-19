@@ -28,3 +28,5 @@ CosmosDB + AI "Policy and Guideline Agent" vakuutusyhtiölle / pankille yms.
 
 ### Perjantai
     1. Presentaatio. On valmis
+
+<img width="2512" height="1241" alt="image" src="https://github.com/user-attachments/assets/66e01054-c41a-4882-abe9-7af8f477e2b5" />
